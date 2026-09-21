@@ -4,7 +4,7 @@ esphome:
   
   project:
     name: "konnostech81.switchman_m5_2c"
-    version: "1.0.0"
+    version: ${firmware_version}
   
 esp32:
   board: esp32dev
@@ -21,7 +21,7 @@ logger:
 # Enable Home Assistant API
 api:
   # encryption:
-  #   key: !secret switchman_2_encryption_key
+  #   key: !secret switchman_m5_2c_encryption_key
 
   on_client_connected:
     then:
@@ -137,10 +137,10 @@ light:
     entity_category: config
     restore_mode: RESTORE_DEFAULT_ON
 
-    # Start at 10%
+    # Start at the configured background brightness
     initial_state:
       state: true
-      brightness: 30%
+      brightness: ${red_led_background_brightness}
       
   # Blue LED brightness slider
   - platform: monochromatic
@@ -170,14 +170,14 @@ text_sensor:
     id: device_model
     entity_category: diagnostic
     lambda: |-
-      return {"M5 2-Gang"};
+      return {"SwitchMan M5-2C-86"}; # or SwitchMan M5-2C-80
 
   - platform: template
     name: "Firmware Version"
     id: firmware_version
     entity_category: diagnostic
     lambda: |-
-      return {"1.0.0"};
+      return ${firmware_version};
     
 sensor:
   - platform: template
@@ -371,10 +371,10 @@ script:
           id: blue_led
           transition_length: 0s
 
-      # Return red background to your normal 20%
+      # Return red background leds to your normal
       - light.turn_on:
           id: background_leds
-          brightness: 20%
+          brightness: ${red_leds_background_brightness}
           transition_length: 0s
 
       # Resume correct warning mode if needed
@@ -395,3 +395,5 @@ script:
 substitutions:
   status_period: "1800ms"
   blink_time: "250ms"
+  red_leds_background_brightness: 30%
+  firmware_version: "1.0.1"
