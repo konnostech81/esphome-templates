@@ -177,7 +177,7 @@ text_sensor:
     id: firmware_version
     entity_category: diagnostic
     lambda: |-
-      return ${firmware_version};
+      return {"${firmware_version}"};
     
 sensor:
   - platform: template
@@ -396,4 +396,4 @@ substitutions:
   status_period: "1800ms"
   blink_time: "250ms"
   red_leds_background_brightness: 30%
-  firmware_version: "1.0.2"
+  firmware_version: "1.0.3"
