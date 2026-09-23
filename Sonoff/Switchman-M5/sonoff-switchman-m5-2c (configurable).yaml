@@ -1,0 +1,482 @@
+esphome:
+  name: switchman-m5-2c-configurable
+  friendly_name: "SwitchMan M5-2C (Configurable)"
+  
+  project:
+    name: "konnostech81.switchman_m5_2c_configurable"
+    version: ${firmware_version}
+
+  on_boot:
+    then:
+      - script.execute: update_attachment_mode_sensor
+  
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+    advanced:
+      minimum_chip_revision: "3.1"
+      sram1_as_iram: true
+
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_key
+
+  on_client_connected:
+    then:
+      - if:
+          condition:
+            api.connected:
+              state_subscription_only: true
+          then:
+            - script.stop: blink_wifi_down
+            - script.stop: blink_api_down
+            - light.turn_off: blue_led
+
+  on_client_disconnected:
+    then:
+      - delay: 1s
+
+      - if:
+          condition:
+            and:
+              - wifi.connected:
+              - not:
+                  api.connected:
+                    state_subscription_only: true
+          then:
+            - script.execute: blink_api_down
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # use_address: your static ip
+
+  power_save_mode: none
+
+  on_disconnect:
+    then:
+      - script.stop: blink_api_down
+      - script.execute: blink_wifi_down
+
+  on_connect:
+    then:
+      - script.stop: blink_wifi_down
+      - light.turn_off: blue_led
+
+      - if:
+          condition:
+            not:
+              api.connected:
+                state_subscription_only: true
+          then:
+            - script.execute: blink_api_down
+
+captive_portal:
+
+switch:
+  - platform: gpio
+    id: relay_1
+    name: "Left Relay"
+    pin: 23
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: gpio
+    id: relay_2
+    name: "Right Relay"
+    pin: 19
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      output.turn_on: led_4
+    on_turn_off:
+      output.turn_off: led_4
+
+  # When on, physical button presses directly toggle their relay (attached).
+  # When off, presses only update the binary_sensors for HA automations (detached).
+  - platform: template
+    name: "Attach Both Buttons to Relays"
+    id: attach_both_buttons_to_relays
+    icon: "mdi:link-variant"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: update_attachment_mode_sensor
+    on_turn_off:
+      - script.execute: update_attachment_mode_sensor
+
+  - platform: template
+    name: "Attach Left Button to Left Relay"
+    id: attach_left_button_to_left_relay
+    icon: "mdi:link-variant"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: update_attachment_mode_sensor
+    on_turn_off:
+      - script.execute: update_attachment_mode_sensor
+
+  - platform: template
+    name: "Attach Right Button to Right Relay"
+    id: attach_right_button_to_right_relay
+    icon: "mdi:link-variant"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: update_attachment_mode_sensor
+    on_turn_off:
+      - script.execute: update_attachment_mode_sensor
+
+button:
+  - platform: template
+    name: "Test - Identify Device"
+    id: test_identify_button
+    icon: "mdi:lightbulb-alert-outline"
+    entity_category: diagnostic
+    on_press:
+      - script.execute: test_identify_leds
+    
+output:
+  # Right-side red LED
+  - platform: gpio
+    id: led_4
+    pin:
+      number: GPIO22
+      inverted: false
+
+  # Controls off-state brightness of the red LEDs.
+  - platform: ledc
+    id: pwm_output
+    pin: GPIO18
+    frequency: 1000 Hz
+
+    # Blue LED brightness
+  - platform: ledc
+    id: blue_pwm
+    pin:
+      number: GPIO5
+      inverted: true
+    frequency: 1000 Hz
+    
+light:
+  # Background brightness for both red LEDs when relay is OFF
+  - platform: monochromatic
+    output: pwm_output
+    name: "Switch LED Background Brightness"
+    id: background_leds
+    icon: "mdi:led-outline"
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_ON
+
+    # Start at the configured background brightness
+    initial_state:
+      state: true
+      brightness: ${red_leds_background_brightness}
+      
+  # Blue LED brightness slider
+  - platform: monochromatic
+    output: blue_pwm
+    name: "Blue LED Brightness"
+    id: blue_led
+    icon: "mdi:led-outline"
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_OFF
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      id: ip_address
+      name: "IP Address"
+      icon: "mdi:wan"
+
+  - platform: template
+    name: "Device Manufacturer"
+    id: device_manufacturer
+    entity_category: diagnostic
+    lambda: |-
+      return {"SONOFF"};
+
+  - platform: template
+    name: "Device Model"
+    id: device_model
+    entity_category: diagnostic
+    lambda: |-
+      return {"SwitchMan M5-2C-86"}; # or SwitchMan M5-2C-80
+
+  - platform: template
+    name: "Firmware Version"
+    id: firmware_version
+    entity_category: diagnostic
+    lambda: |-
+      return {"${firmware_version}"};
+
+  - platform: template
+    name: "Switch Mode"
+    id: button_relay_attachment_mode
+    icon: "mdi:link-variant"
+    
+sensor:
+  - platform: template
+    id: internal_temp
+    name: "Internal Temperature"
+    icon: "mdi:thermometer"
+    unit_of_measurement: "°C"
+    entity_category: diagnostic
+    disabled_by_default: true
+    lambda: return temperatureRead();
+
+  - platform: wifi_signal
+    name: "RSSI"
+    id: sensor_rssi
+    update_interval: 90s
+    entity_category: "diagnostic"
+
+  - platform: uptime
+    name: "Uptime"
+    id: sensor_uptime
+    update_interval: 300s
+    entity_category: "diagnostic"
+
+binary_sensor:
+  - platform: gpio
+    id: left_button
+    name: "Left Button"
+    pin:
+      number: 4
+      inverted: true
+      mode: INPUT_PULLUP
+    on_press:
+      - if:
+          condition:
+            or:
+              - switch.is_on: attach_both_buttons_to_relays
+              - switch.is_on: attach_left_button_to_left_relay
+          then:
+            - switch.toggle: relay_1
+
+  - platform: gpio
+    id: right_button
+    name: "Right Button"
+    pin:
+      number: 15
+      inverted: true
+      mode: INPUT_PULLUP
+    on_press:
+      - if:
+          condition:
+            or:
+              - switch.is_on: attach_both_buttons_to_relays
+              - switch.is_on: attach_right_button_to_right_relay
+          then:
+            - switch.toggle: relay_2
+
+script:
+
+  # ==========================================================
+  # Publishes a human-readable summary of the attachment switches
+  # ==========================================================
+  - id: update_attachment_mode_sensor
+    then:
+      - lambda: |-
+          bool left = id(attach_both_buttons_to_relays).state || id(attach_left_button_to_left_relay).state;
+          bool right = id(attach_both_buttons_to_relays).state || id(attach_right_button_to_right_relay).state;
+          std::string mode;
+          if (left && right) {
+            mode = "Attached";
+          } else if (left) {
+            mode = "Partially Attached (Left)";
+          } else if (right) {
+            mode = "Partially Attached (Right)";
+          } else {
+            mode = "Detached";
+          }
+          id(button_relay_attachment_mode).publish_state(mode);
+
+  # ==========================================================
+  # WiFi DOWN
+  # One blue blink every status_period
+  # ==========================================================
+  - id: blink_wifi_down
+    mode: restart
+    then:
+      - while:
+          condition:
+            not:
+              wifi.connected:
+          then:
+            - light.turn_on:
+                id: blue_led
+                brightness: 100%
+                transition_length: 0s
+
+            - delay: ${blink_time}
+
+            - light.turn_off:
+                id: blue_led
+                transition_length: 0s
+
+            - delay: ${status_period}
+
+
+  # ==========================================================
+  # WiFi OK, but Home Assistant API DOWN
+  # Three blue blinks every status_period
+  # ==========================================================
+  - id: blink_api_down
+    mode: restart
+    then:
+      - while:
+          condition:
+            and:
+              - wifi.connected:
+              - not:
+                  api.connected:
+                    state_subscription_only: true
+          then:
+
+            # Blink 1
+            - light.turn_on:
+                id: blue_led
+                brightness: 100%
+                transition_length: 0s
+            - delay: ${blink_time}
+            - light.turn_off:
+                id: blue_led
+                transition_length: 0s
+            - delay: ${blink_time}
+
+            # Blink 2
+            - light.turn_on:
+                id: blue_led
+                brightness: 100%
+                transition_length: 0s
+            - delay: ${blink_time}
+            - light.turn_off:
+                id: blue_led
+                transition_length: 0s
+            - delay: ${blink_time}
+
+            # Blink 3
+            - light.turn_on:
+                id: blue_led
+                brightness: 100%
+                transition_length: 0s
+            - delay: ${blink_time}
+            - light.turn_off:
+                id: blue_led
+                transition_length: 0s
+
+            - delay: ${status_period}
+
+
+  # ==========================================================
+  # TEST / IDENTIFY DEVICE
+  # Alternates BLUE / RED LEDs
+  # ==========================================================
+  - id: test_identify_leds
+    mode: restart
+    then:
+      # Temporarily stop warning patterns
+      - script.stop: blink_wifi_down
+      - script.stop: blink_api_down
+
+      # BLUE
+      - light.turn_off: background_leds
+      - light.turn_on:
+          id: blue_led
+          brightness: 100%
+          transition_length: 0s
+      - delay: 500ms
+
+      # RED
+      - light.turn_off:
+          id: blue_led
+          transition_length: 0s
+      - light.turn_on:
+          id: background_leds
+          brightness: 100%
+          transition_length: 0s
+      - delay: 500ms
+
+      # BLUE
+      - light.turn_off:
+          id: background_leds
+          transition_length: 0s
+      - light.turn_on:
+          id: blue_led
+          brightness: 100%
+          transition_length: 0s
+      - delay: 500ms
+
+      # RED
+      - light.turn_off:
+          id: blue_led
+          transition_length: 0s
+      - light.turn_on:
+          id: background_leds
+          brightness: 100%
+          transition_length: 0s
+      - delay: 500ms
+
+      # BLUE
+      - light.turn_off:
+          id: background_leds
+          transition_length: 0s
+      - light.turn_on:
+          id: blue_led
+          brightness: 100%
+          transition_length: 0s
+      - delay: 500ms
+
+      # RED
+      - light.turn_off:
+          id: blue_led
+          transition_length: 0s
+      - light.turn_on:
+          id: background_leds
+          brightness: 100%
+          transition_length: 0s
+      - delay: 500ms
+
+      # Finish test
+      - light.turn_off:
+          id: blue_led
+          transition_length: 0s
+
+      # Return red background leds to your normal
+      - light.turn_on:
+          id: background_leds
+          brightness: ${red_leds_background_brightness}
+          transition_length: 0s
+
+      # Resume correct warning mode if needed
+      - if:
+          condition:
+            not:
+              wifi.connected:
+          then:
+            - script.execute: blink_wifi_down
+          else:
+            - if:
+                condition:
+                  not:
+                    api.connected:
+                      state_subscription_only: true
+                then:
+                  - script.execute: blink_api_down
+substitutions:
+  status_period: "1800ms"
+  blink_time: "250ms"
+  red_leds_background_brightness: 30%
+  firmware_version: "1.0.0"
