@@ -4,7 +4,7 @@ esphome:
 
   project:
     name: "konnostech81.switchman_m5_1c"
-    version: "1.0.0"
+    version: "1.0.1"
 
   on_boot:
     priority: -100
@@ -189,14 +189,15 @@ text_sensor:
     id: device_model
     entity_category: diagnostic
     lambda: |-
-      return {"SwitchMan M5-1C-86"}; # or SwitchMan M5-1C-80
+      return {"SwitchMan M5-1C-86"}; 
+  # or SwitchMan M5-1C-80
 
   - platform: template
     name: "Firmware Version"
     id: firmware_version
     entity_category: diagnostic
     lambda: |-
-      return {"1.0.0"};
+      return {"1.0.1"};
     
 sensor:
   - platform: template
