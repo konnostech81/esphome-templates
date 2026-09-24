@@ -7,6 +7,7 @@ esphome:
     version: ${firmware_version}
 
   on_boot:
+    priority: -100
     then:
       - script.execute: update_attachment_mode_sensor
   
@@ -259,9 +260,11 @@ binary_sensor:
       mode: INPUT_PULLUP
     on_press:
       # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
+      # device_id is the MAC address, guaranteed unique per device even if the node name isn't
       - homeassistant.event:
           event: esphome.button_pressed
-          data:
+          data: 
+            device_id: !lambda 'return get_mac_address();'            
             button: left
       - if:
           condition:
@@ -280,9 +283,11 @@ binary_sensor:
       mode: INPUT_PULLUP
     on_press:
       # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
+      # device_id is the MAC address, guaranteed unique per device even if the node name isn't
       - homeassistant.event:
           event: esphome.button_pressed
-          data:
+          data: 
+            device_id: !lambda 'return get_mac_address();'
             button: right
       - if:
           condition:
@@ -490,4 +495,4 @@ substitutions:
   status_period: "1800ms"
   blink_time: "250ms"
   red_leds_background_brightness: 30%
-  firmware_version: "1.0.2"
+  firmware_version: "1.0.3"
