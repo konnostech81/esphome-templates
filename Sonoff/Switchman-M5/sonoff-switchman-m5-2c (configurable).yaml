@@ -261,7 +261,7 @@ binary_sensor:
       # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
       - homeassistant.event:
           event: esphome.button_pressed
-          event_data:
+          data:
             button: left
       - if:
           condition:
@@ -282,7 +282,7 @@ binary_sensor:
       # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
       - homeassistant.event:
           event: esphome.button_pressed
-          event_data:
+          data:
             button: right
       - if:
           condition:
@@ -490,4 +490,4 @@ substitutions:
   status_period: "1800ms"
   blink_time: "250ms"
   red_leds_background_brightness: 30%
-  firmware_version: "1.0.1"
+  firmware_version: "1.0.2"
