@@ -170,7 +170,8 @@ text_sensor:
     id: device_model
     entity_category: diagnostic
     lambda: |-
-      return {"SwitchMan M5-2C-86"}; # or SwitchMan M5-2C-80
+      return {"SwitchMan M5-2C-86"}; 
+    # or SwitchMan M5-2C-80
 
   - platform: template
     name: "Firmware Version"
@@ -209,6 +210,12 @@ binary_sensor:
       number: 4
       inverted: true
       mode: INPUT_PULLUP
+    on_press:
+      # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
+      - homeassistant.event:
+          event: esphome.button_pressed
+          data:
+            button: left
 
   - platform: gpio
     id: right_button
@@ -217,6 +224,12 @@ binary_sensor:
       number: 15
       inverted: true
       mode: INPUT_PULLUP
+    on_press:
+    # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
+      - homeassistant.event:
+          event: esphome.button_pressed
+          data:
+            button: right
 
 script:
 
@@ -396,4 +409,4 @@ substitutions:
   status_period: "1800ms"
   blink_time: "250ms"
   red_leds_background_brightness: 30%
-  firmware_version: "1.0.0"
+  firmware_version: "1.0.1"
