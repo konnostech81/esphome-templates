@@ -262,9 +262,9 @@ binary_sensor:
       # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
       # device_id is the MAC address, guaranteed unique per device even if the node name isn't
       - homeassistant.event:
-          event: esphome.button_pressed
-          data: 
-            device_id: !lambda 'return get_mac_address();'            
+          event: esphome.switchman_2c_button_pressed
+          data:
+            device_id: !lambda 'return get_mac_address();'
             button: left
       - if:
           condition:
@@ -285,8 +285,8 @@ binary_sensor:
       # Fires as a direct RPC call, unlike entity state, so HA never misses a rapid press
       # device_id is the MAC address, guaranteed unique per device even if the node name isn't
       - homeassistant.event:
-          event: esphome.button_pressed
-          data: 
+          event: esphome.switchman_2c_button_pressed
+          data:
             device_id: !lambda 'return get_mac_address();'
             button: right
       - if:
@@ -495,4 +495,4 @@ substitutions:
   status_period: "1800ms"
   blink_time: "250ms"
   red_leds_background_brightness: 30%
-  firmware_version: "1.0.3"
+  firmware_version: "2.0.0"
